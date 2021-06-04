@@ -50,3 +50,9 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# custom
+.pio/*
+.vscode/*
+lib/GxEPD/
+include/config_PRIVATE.h

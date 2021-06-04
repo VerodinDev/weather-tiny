@@ -1,11 +1,10 @@
+#include <Arduino.h>
+
 // ----------------------------------
 // DISPLAY --------------------------
 // ----------------------------------
-#include <SPI.h>
 #include <GxEPD.h>
-
-#include <GxGDE0213B72B/GxGDE0213B72B.h> // 2.13" b/w
-// #include <GxDEPG0213BN/GxDEPG0213BN.h>  // 2.13" b/w newer panel
+#include <GxDEPG0213BN/GxDEPG0213BN.h>  // 2.13" b/w newer panel
 
 #include <GxIO/GxIO_SPI/GxIO_SPI.h>
 #include <GxIO/GxIO.h>
@@ -38,6 +37,10 @@ GxEPD_Class display(io, ELINK_RESET, ELINK_BUSY);
 #include <ESPAsyncWebServer.h>
 #include <rom/rtc.h> 
 #include <Preferences.h>
+#include <SPI.h>
+
+// WTF compile fix
+#include <Wire.h>
 
 #define ADC_PIN 35
 #define WAKE_BTN_PIN 39
@@ -118,6 +121,22 @@ T nested_value_or_default(JsonObject parent_jobj, String key, String nested_key,
     }
 }
 
+int get_battery_percent(int adc_value) {
+    float voltage = adc_value / 4095.0 * 7.5;
+    Serial.println("Battery voltage ~" + String(voltage) + "V");
+    if (voltage > 4.35) {
+        return 101;  // charging / DC powered
+    }
+    if (voltage > 4.2) {
+        return 100;
+    } 
+    if (voltage < 3.3) {
+        return 1;
+    }
+    int percent = (int)((voltage - 3.3)/(4.1 - 3.3)*99) + 1;
+    Serial.println("Battery percent: " + String(percent) + "%");
+    return percent;
+}
 
 void update_header_view(View& view, bool data_updated) {
     view.location = location[curr_loc].name.substring(0,7);
@@ -174,7 +193,6 @@ void update_weather_view(View& view, bool data_updated) {
         view.percic_pop[i] = left_pad(String(weather_request.rain[i].pop), 3);
     }
 }
-
 
 void update_location(GeocodingNominatimResponse& location_resp, JsonObject& jobj) {
     location_resp.lat = jobj["data"][0]["latitude"].as<float>();
@@ -293,7 +311,7 @@ bool weather_handler(WiFiClient& resp_stream, Request request) {
 }
 
 
-bool air_quality_handler(WiFiClient& resp_stream, Request request) {
+/* bool air_quality_handler(WiFiClient& resp_stream, Request request) {
     const int json_size = 6 * 1024;
     DynamicJsonDocument doc = deserialize(resp_stream, json_size);
     JsonObject api_resp = doc.as<JsonObject>();
@@ -314,7 +332,7 @@ bool air_quality_handler(WiFiClient& resp_stream, Request request) {
     airquality_request.response.print();
     
     return true;
-}
+} */
 
 
 DynamicJsonDocument deserialize(WiFiClient& resp_stream, const int size, bool is_embeded) {
@@ -343,25 +361,6 @@ DynamicJsonDocument deserialize(WiFiClient& resp_stream, const int size, bool is
     Serial.println("");
     return doc;
 }
-
-
-int get_battery_percent(int adc_value) {
-    float voltage = adc_value / 4095.0 * 7.5;
-    Serial.println("Battery voltage ~" + String(voltage) + "V");
-    if (voltage > 4.35) {
-        return 101;  // charging / DC powered
-    }
-    if (voltage > 4.2) {
-        return 100;
-    } 
-    if (voltage < 3.3) {
-        return 1;
-    }
-    int percent = (int)((voltage - 3.3)/(4.1 - 3.3)*99) + 1;
-    Serial.println("Battery percent: " + String(percent) + "%");
-    return percent;
-}
-
 
 bool http_request_data(WiFiClient& client, Request request, unsigned int retry=3) {
     
@@ -427,6 +426,13 @@ bool connect_to_wifi(unsigned int retry=5) {
     return false;
 }
 
+void save_location_to_memory(int location_id) {
+    Serial.println("Save current location to memory...");
+    preferences.begin(LOC_MEMORY_ID, false);
+    preferences.putInt("curr_loc", location_id);
+    preferences.end();
+}
+
 void print_reset_reason(RESET_REASON reason) {
     switch ( reason) {
         case 1 : Serial.print("POWERON_RESET"); break;
@@ -448,6 +454,16 @@ void print_reset_reason(RESET_REASON reason) {
     }
 }
 
+void set_mode(int mode) {
+    preferences.begin(MEMORY_ID, false);
+    preferences.putInt("mode", mode);
+    preferences.end();
+}
+
+void set_mode_and_reboot(int mode) {
+    set_mode(mode);
+    ESP.restart();
+}
 
 void wakeup_reason() {
     esp_sleep_wakeup_cause_t wakeup_reason;
@@ -503,6 +519,10 @@ void enable_timed_sleep(int interval_minutes) {
     Serial.printf("\nWake up in %d minutes and %d seconds", sleep_minutes_left, sleep_seconds_left);
 }
 
+void disconnect_from_wifi() {
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
+}
 
 void begin_deep_sleep() {
 #ifdef BUILTIN_LED
@@ -531,13 +551,6 @@ void begin_deep_sleep() {
     // start sleep
     esp_deep_sleep_start();
 }
-
-
-void disconnect_from_wifi() {
-    WiFi.disconnect();
-    WiFi.mode(WIFI_OFF);
-}
-
 
 void http_resource_not_found(AsyncWebServerRequest *request) {
     request->send(404, "text/plain", "Not found");
@@ -665,15 +678,6 @@ void save_config_to_memory() {
     preferences.end();
 }
 
-
-void save_location_to_memory(int location_id) {
-    Serial.println("Save current location to memory...");
-    preferences.begin(LOC_MEMORY_ID, false);
-    preferences.putInt("curr_loc", location_id);
-    preferences.end();
-}
-
-
 class CaptiveRequestHandler : public AsyncWebHandler {
 public:
     CaptiveRequestHandler() {}
@@ -765,7 +769,6 @@ void run_config_server() {
     server.begin();
 }
 
-
 void run_validating_mode() {
     server.end();
         
@@ -825,23 +828,23 @@ void run_operating_mode() {
         weather_request.make_path(location[curr_loc]);
         weather_request.handler = weather_handler;
 
-        airquality_request.make_path(location[curr_loc]);
-        airquality_request.handler = air_quality_handler;
+        //airquality_request.make_path(location[curr_loc]);
+        //airquality_request.handler = air_quality_handler;
 
         bool is_time_fetched = http_request_data(client, datetime_request);
         bool is_weather_fetched = http_request_data(client, weather_request);
-        bool is_aq_fetched = http_request_data(client, airquality_request);
+        //bool is_aq_fetched = http_request_data(client, airquality_request);
 
         view = View();
 
         update_header_view(view, is_time_fetched); 
         update_weather_view(view, is_weather_fetched);
-        update_air_quality_view(view, is_aq_fetched);
+        //update_air_quality_view(view, is_aq_fetched);
             
         Serial.println("\nUpdate display.");
         display_header(view);
         display_weather(view);
-        display_air_quality(view);
+        //display_air_quality(view);
     }
 
     display.update();
@@ -851,20 +854,6 @@ void run_operating_mode() {
     enable_timed_sleep(SLEEP_INTERVAL_MIN);
     begin_deep_sleep();
 }
-
-
-void set_mode(int mode) {
-    preferences.begin(MEMORY_ID, false);
-    preferences.putInt("mode", mode);
-    preferences.end();
-}
-
-
-void set_mode_and_reboot(int mode) {
-    set_mode(mode);
-    ESP.restart();
-}
-
 
 int get_mode(bool cached_mode) {
     if (cached_mode) {
