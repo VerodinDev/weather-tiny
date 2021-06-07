@@ -1,10 +1,11 @@
-# Tiny weather station based on TTGO T5 V2.3.1 (ESP32 with 2.13" e-ink display)
+# Tiny weather station based on TTGO T5 V2.3.1
 
 Original code by piotr-kubica
 
 Needed to make changes to make it play nice with PlatformIO and customise what's shown on the display. The main purpose is the provide a quick overview of the prediction for the current day, so I can dress my son appropiately before dropping him off at the daycare. It hangs next to a weatherstation display that shows the current weather.
 
 Differences with original weather display:
+- Project updated to work with PlatformIO
 - Replaced Positionstack API with hardcoded location (see config.h)
 - Replaced TimezoneDb with NTP time support.
 - No air quality support (nearest station is too far from our place)
