@@ -1,65 +1,90 @@
 #ifndef _fmt_h
 #define _fmt_h
 
-
 #include <time.h>
 #include "i18n.h"
 
-
-String capitalize(String str) {
+String capitalize(String str)
+{
     String first_letter = str.substring(0, 1);
     first_letter.toUpperCase();
     String capitalized = first_letter + str.substring(1, str.length());
     return capitalized;
 }
 
-
-String right_pad(String text, const int size, char pad_char=' ') {
-    if (text.length() > size) {
+String right_pad(String text, const int size, char pad_char = ' ')
+{
+    if (text.length() > size)
+    {
         return text.substring(0, size);
     }
-    char buff[size+1];
+    char buff[size + 1];
     String fmt = String("%-" + String(size) + "s");
     sprintf(buff, fmt.c_str(), text);
-    memset(buff+text.length(), pad_char, size-text.length());
+    memset(buff + text.length(), pad_char, size - text.length());
     return String(buff);
 }
 
-
-String left_pad(String text, const int size, char pad_char=' ') {
-    if (text.length() > size) {
+String left_pad(String text, const int size, char pad_char = ' ')
+{
+    if (text.length() > size)
+    {
         return text.substring(0, size);
     }
-    char buff[size+1];
+    char buff[size + 1];
     String fmt = String("%" + String(size) + "s");
     sprintf(buff, fmt.c_str(), text);
-    memset(buff, pad_char, size-text.length());
+    memset(buff, pad_char, size - text.length());
     return String(buff);
 }
 
-
-String fmt_2f1(float f) {
-	char c[4];
+String fmt_2f1(float f)
+{
+    char c[4];
     sprintf(c, "%2.1f", f);
     return String(c);
 }
 
-
-String header_datetime(time_t* dt, bool updated) {
+String header_datetime(time_t *dt, bool updated)
+{
     struct tm *t = localtime(dt);
-    char date[9+1];  // last char is '\0'
-    sprintf(date, "%s %02u/%02u", get_weekday(t->tm_wday), t->tm_mday, t->tm_mon+1);
-    char curr_time[5+1];  // last char is '\0'
+    char date[9 + 1]; // last char is '\0'
+    sprintf(date, "%s %02u/%02u", get_weekday(t->tm_wday), t->tm_mday, t->tm_mon + 1);
+    char curr_time[5 + 1]; // last char is '\0'
     sprintf(curr_time, "%02u:%02u", t->tm_hour, t->tm_min);
-    if (updated) {
+    if (updated)
+    {
         return String(curr_time) + " " + String(date);
-    } else {
+    }
+    else
+    {
         return String(curr_time) + "!" + String(date);
     }
 }
 
+String header_datetime()
+{
+    //char date[9 + 1]; // last char is '\0'
+    //char curr_time[5 + 1]; // last char is '\0'
+    struct tm timeinfo;
 
-String ts2weekday(int timestamp) {
+    if (!getLocalTime(&timeinfo))
+    {
+        Serial.println("Failed to obtain time");
+        return "--:-- xx --/--";
+    }
+
+    Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+
+    // hh:mm Day dd/mm
+    char dateTimeStr[16];
+    strftime(dateTimeStr, 16, "%R %a%e/%m", &timeinfo);
+    
+    return String(dateTimeStr);
+}
+
+String ts2weekday(int timestamp)
+{
     time_t tm = timestamp;
     struct tm *now = localtime(&tm);
     return String(get_weekday(now->tm_wday));
@@ -67,7 +92,8 @@ String ts2weekday(int timestamp) {
 
 // TODO refactor/extract all function below
 
-String ts2date(int timestamp) {
+String ts2date(int timestamp)
+{
     time_t tm = timestamp;
     struct tm *now = localtime(&tm);
     char ts_str[20];
@@ -75,8 +101,8 @@ String ts2date(int timestamp) {
     return String(ts_str);
 }
 
-
-String ts2H(int timestamp) {
+String ts2H(int timestamp)
+{
     time_t tm = timestamp;
     struct tm *now = localtime(&tm);
     char ts_str[5];
@@ -84,8 +110,8 @@ String ts2H(int timestamp) {
     return String(ts_str);
 }
 
-
-String ts2HM(int timestamp) {
+String ts2HM(int timestamp)
+{
     time_t tm = timestamp;
     struct tm *now = localtime(&tm);
     char ts_str[10];
@@ -93,14 +119,13 @@ String ts2HM(int timestamp) {
     return String(ts_str);
 }
 
-
-String ts2dm(int timestamp) {
+String ts2dm(int timestamp)
+{
     time_t tm = timestamp;
     struct tm *now = localtime(&tm);
     char ts_str[10];
     strftime(ts_str, sizeof(ts_str), "%d/%m", now);
     return String(ts_str);
 }
-
 
 #endif

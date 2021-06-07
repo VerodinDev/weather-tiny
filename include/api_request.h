@@ -6,25 +6,25 @@
 #include "fmt.h"
 #include "config.h"
 
-
 struct Request;
-typedef bool (*ResponseHandler) (WiFiClient& resp_stream, Request request);
+typedef bool (*ResponseHandler)(WiFiClient &resp_stream, Request request);
 
-struct Request {
+struct Request
+{
     String server = "";
     String api_key = "";
     String path = "";
     ResponseHandler handler;
 
     void make_path() {}
-    
-    String get_server_path() {
+
+    String get_server_path()
+    {
         return this->server + this->path;
     }
-} ;
+};
 
-
-struct TimeZoneDbResponse {
+/* struct TimeZoneDbResponse {
     time_t dt;
     int gmt_offset;
     int dst;
@@ -61,10 +61,9 @@ struct TimeZoneDbRequest: Request {
 
     
     TimeZoneDbResponse response;
-} ;
+} ; */
 
-
-struct AirQualityResponse {
+/* struct AirQualityResponse {
     int pm25;
     
     void print() {
@@ -130,18 +129,18 @@ struct GeocodingNominatimRequest: Request {
     }
     
     GeocodingNominatimResponse response;
-} ;
+} ; */
 
-
-struct WeatherResponseHourly {  // current and hourly
+struct WeatherResponseHourly
+{ // current and hourly
     int date_ts;
     int sunr_ts; // sunrise
     int suns_ts; // sunset
-    int temp;  // round from float
+    int temp;    // round from float
     int feel_t;  // round from float
-    int max_t; // [daily] round from float
-    int min_t; // [daily] round from float
-    int pressure; 
+    int max_t;   // [daily] round from float
+    int min_t;   // [daily] round from float
+    int pressure;
     int clouds;
     int wind_bft; // round from float to bft int
     int wind_deg; // round from float
@@ -150,33 +149,32 @@ struct WeatherResponseHourly {  // current and hourly
     float snow;
     float rain;
     int pop; // [hourly] probability of percipitation hourly round to int percent
-    
-    void print() {
+
+    void print()
+    {
         char buffer[150];
-        Serial.println("Weather currently: " + descr);        
+        Serial.println("Weather currently: " + descr);
         // 15 * 8 char strings
         sprintf(
-            buffer, 
-            "%8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s", 
-            "date_ts", "sunr_ts", "suns_ts", "temp", "feel_t", 
-            "max_t", "min_t", "pressure", "clouds", "wind_bft", 
-            "wind_deg", "icon", "snow", "rain", "pop"
-        );
+            buffer,
+            "%8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s %8s",
+            "date_ts", "sunr_ts", "suns_ts", "temp", "feel_t",
+            "max_t", "min_t", "pressure", "clouds", "wind_bft",
+            "wind_deg", "icon", "snow", "rain", "pop");
         Serial.println(buffer);
         sprintf(
-            buffer, 
+            buffer,
             "%8s %8s %8s %8d %8d %8d %8d %8d %8d %8d %8d %8s %8.1f %8.1f %8d",
-            ts2HM(date_ts), ts2HM(sunr_ts), ts2HM(suns_ts), 
+            ts2HM(date_ts), ts2HM(sunr_ts), ts2HM(suns_ts),
             temp, feel_t, max_t, min_t,
             pressure, clouds, wind_bft, wind_deg,
-            icon, snow, rain, pop
-        );
+            icon, snow, rain, pop);
         Serial.println(buffer);
     }
-} ;
+};
 
-
-struct WeatherResponseDaily {
+struct WeatherResponseDaily
+{
     int date_ts;
     int max_t;
     int min_t;
@@ -186,95 +184,89 @@ struct WeatherResponseDaily {
     float snow;
     float rain;
 
-    void print() {
+    void print()
+    {
         char buffer[100];
         Serial.print("Forecast: " + ts2dm(date_ts));
         sprintf(
-            buffer, 
+            buffer,
             "%8s %8s %8s %8s %8s %8s %8s",
-            "max_t", "min_t", "wind_bft", 
-            "wind_deg", "pop", "snow", "rain"
-        );
+            "max_t", "min_t", "wind_bft",
+            "wind_deg", "pop", "snow", "rain");
         Serial.println(buffer);
         Serial.printf("%15s", "");
         sprintf(
-            buffer, 
+            buffer,
             "%8d %8d %8d %8d %8d %8s %8s",
             max_t, min_t, wind_bft, wind_deg, pop,
-            snow? "yes" : "no", rain? "yes" : "no"
-        );
+            snow ? "yes" : "no", rain ? "yes" : "no");
         Serial.println(buffer);
     }
+};
 
-} ;
-
-
-struct WeatherResponseRainHourly {
+struct WeatherResponseRainHourly
+{
     int date_ts;
     int pop;
     float snow;
     float rain;
     String icon;
 
-    void print() {
+    void print()
+    {
         char buffer[60];
         Serial.print("Rain: " + ts2date(date_ts));
         sprintf(
-            buffer, 
+            buffer,
             "%8s %8s %8s %8s",
-            "pop", "snow", "rain", "icon"
-        );
+            "pop", "snow", "rain", "icon");
         Serial.println(buffer);
         Serial.printf("%20s", "");
         sprintf(
-            buffer, 
+            buffer,
             "%8d %8.1f %8.1f %8s",
-            pop, snow, rain, icon
-        );
+            pop, snow, rain, icon);
         Serial.println(buffer);
     }
-} ;
+};
 
+struct WeatherRequest : Request
+{
 
-struct WeatherRequest: Request {
-   
-    explicit WeatherRequest(): Request() {
+    explicit WeatherRequest() : Request()
+    {
         this->server = "api.openweathermap.org";
         this->api_key = OPENWEATHER_KEY;
     }
-    
-    explicit WeatherRequest(String server, String api_key) {
+
+    explicit WeatherRequest(String server, String api_key)
+    {
         this->server = server;
         this->api_key = api_key;
     }
-    
-    explicit WeatherRequest(const Request& request): Request(request) { }
 
-    void make_path(Location& location) {
-        this->path = "/data/2.5/onecall?lat="+String(location.lat)
-            +"&lon="+String(location.lon)
-            +"&exclude=minutely,alerts"
-            +"&appid="+api_key
-            +"&lang="+LANGS[LANG];
+    explicit WeatherRequest(const Request &request) : Request(request) {}
+
+    void make_path(Location &location)
+    {
+        this->path = "/data/2.5/onecall?lat=" + String(location.lat) + "&lon=" + String(location.lon) + "&exclude=minutely,alerts" + "&appid=" + api_key + "&lang=" + LANGS[LANG];
     }
-    
+
     WeatherResponseHourly hourly[1];
     WeatherResponseDaily daily[2];
     WeatherResponseRainHourly rain[5];
-} ;
-
-
-String openweather_icons[9] = {
-    "01",   // 0 clear sky
-    "02",   // 1 few clouds    
-    "03",   // 2 scattered clouds
-    "04",   // 3 broken clouds
-    "09",   // 4 shower rain
-    "10",   // 5 rain
-    "11",   // 6 thunderstorm
-    "13",   // 7 snow
-    "50"    // 8 mist
 };
 
+String openweather_icons[9] = {
+    "01", // 0 clear sky
+    "02", // 1 few clouds
+    "03", // 2 scattered clouds
+    "04", // 3 broken clouds
+    "09", // 4 shower rain
+    "10", // 5 rain
+    "11", // 6 thunderstorm
+    "13", // 7 snow
+    "50"  // 8 mist
+};
 
 #endif

@@ -1,21 +1,22 @@
 #ifndef _view_h
 #define _view_h
 
+const uint8_t PERCIP_SIZE = 5;
 
-# define PERCIP_SIZE 5
+struct View
+{
 
-
-struct View {
-
-    View() {
-        for (int i = 0; i < PERCIP_SIZE; i++) {
+    View()
+    {
+        for (int i = 0; i < PERCIP_SIZE; i++)
+        {
             percip[i] = "---";
             percip_time[i] = "--";
             percic_pop[i] = "---";
             percip_icon[i] = ")";
         }
     }
-    
+
     String location = "Unknown";
     String datetime = "00:00  --- 00/00";
     unsigned int battery_percent = 0;
@@ -48,31 +49,31 @@ struct View {
     String percip_icon[PERCIP_SIZE];
     String percip[PERCIP_SIZE];
     String percic_pop[PERCIP_SIZE];
-} ;
-
-
-char meteo_font[1+9] = {
-    ')',   //-1 N/A
-    'B',   // 0 clear sky
-    'H',   // 1 few clouds    
-    'N',   // 2 scattered clouds
-    'Y',   // 3 broken clouds
-    'Q',   // 4 shower rain
-    'R',   // 5 rain
-    'O',   // 6 thunderstorm
-    'W',   // 7 snow
-    'L'    // 8 mist
 };
 
+char meteo_font[1 + 9] = {
+    ')', //-1 N/A
+    'B', // 0 clear sky
+    'H', // 1 few clouds
+    'N', // 2 scattered clouds
+    'Y', // 3 broken clouds
+    'Q', // 4 shower rain
+    'R', // 5 rain
+    'O', // 6 thunderstorm
+    'W', // 7 snow
+    'L'  // 8 mist
+};
 
-char icon2meteo_font(String icon) {
+char icon2meteo_font(String icon)
+{
     int i = 8;
-    for (; i >= -1; i--) {
-        if (icon.equals(openweather_icons[i])) break;
+    for (; i >= -1; i--)
+    {
+        if (icon.equals(openweather_icons[i]))
+            break;
     }
     // Serial.println("Meteo font index: " + String(i+1));
-    return meteo_font[i+1];
+    return meteo_font[i + 1];
 }
-
 
 #endif
